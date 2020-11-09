@@ -1,0 +1,24 @@
+name: Build and push a release image
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    runs-on: [ubuntu-18.04]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build go-ipfix Docker images and push to harbor registry
+        env:
+          HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+          TAG: ${{ github.ref }}
+        run: |
+          make collector
+          make docker-collector
+          echo "$HARBOR_PASSWORD" | docker login -u "$HARBOR_USERNAME" --password-stdin $HARBOR_REGISTRY
+          docker tag goipfix/ipfix-collector goipfix/ipfix-collector:"${TAG:10}"
+          docker push goipfix/ipfix-collector:"${TAG:10}"

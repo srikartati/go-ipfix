@@ -1,0 +1,31 @@
+name: Build and push the latest image if needed
+
+on:
+  pull_request:
+    branches:
+      - master
+      - release-*
+  push:
+    branches:
+      - master
+      - release-*
+
+jobs:
+  build:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: [ubuntu-18.04]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build ipfix-collector Docker image
+        run: |
+        make collector
+        make docker-collector
+      - name: Push ipfix-collector Docker image to harbor registry
+        if: ${{ github.repository == 'vmware/go-ipfix' && github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+        env:
+          HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          echo "$HARBOR_PASSWORD" | docker login -u "$HARBOR_USERNAME" --password-stdin $HARBOR_REGISTRY
+          docker push goipfix/ipfix-collector:latest
